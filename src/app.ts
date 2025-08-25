@@ -12,7 +12,6 @@ app.use(express.json());
 
 // Routes
 app.use("/api/auth", authRoutes);
-
 connectDB();
 
 export default app;
