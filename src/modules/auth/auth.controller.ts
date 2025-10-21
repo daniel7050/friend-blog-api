@@ -1,6 +1,6 @@
 // backend/modules/auth/auth.controller.ts
 import { Request, Response } from "express";
-import prisma from "../../config/prisma";
+import prisma from "../../generated/config/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
