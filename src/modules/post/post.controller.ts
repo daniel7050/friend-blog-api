@@ -1,11 +1,14 @@
 import { Request, Response } from "express";
-import { prisma } from "../../config/db";
+import { prisma } from "../../generated/config/db";
 
 // 🟢 Create Post
 export const createPost = async (req: Request, res: Response) => {
   try {
     const { content } = req.body;
-    const userId = (req as any).user.id; // from auth middleware
+    const rawUserId = (req as any).user?.id; // from auth middleware
+    const userId = Number(rawUserId);
+    if (!rawUserId || Number.isNaN(userId))
+      return res.status(401).json({ error: "Not authorized" });
 
     if (!content) return res.status(400).json({ error: "Content is required" });
 
@@ -23,7 +26,10 @@ export const createPost = async (req: Request, res: Response) => {
 // 🔵 Get All Posts by a User
 export const getUserPosts = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
+    const rawUserId = (req as any).user?.id;
+    const userId = Number(rawUserId);
+    if (!rawUserId || Number.isNaN(userId))
+      return res.status(401).json({ error: "Not authorized" });
 
     const posts = await prisma.post.findMany({
       where: { authorId: userId },
@@ -42,7 +48,10 @@ export const updatePost = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { content } = req.body;
-    const userId = (req as any).user.id;
+    const rawUserId = (req as any).user?.id;
+    const userId = Number(rawUserId);
+    if (!rawUserId || Number.isNaN(userId))
+      return res.status(401).json({ error: "Not authorized" });
 
     const post = await prisma.post.findUnique({ where: { id } });
 
@@ -66,7 +75,10 @@ export const updatePost = async (req: Request, res: Response) => {
 export const deletePost = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = (req as any).user.id;
+    const rawUserId = (req as any).user?.id;
+    const userId = Number(rawUserId);
+    if (!rawUserId || Number.isNaN(userId))
+      return res.status(401).json({ error: "Not authorized" });
 
     const post = await prisma.post.findUnique({ where: { id } });
 

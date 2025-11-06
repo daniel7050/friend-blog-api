@@ -7,16 +7,15 @@ import { ENV } from "./generated/config/env";
 
 const app = express();
 
-app.use("/api/posts", postRoutes);
-
-// Middleware
+// Middleware (must be registered before routes)
 app.use(cors({ origin: "http://localhost:3000", credentials: true }));
 app.use(express.json());
 
-// Routes
-app.use("/api/auth", authRoutes);
+// Initialize DB early so handlers can assume it's available
 connectDB();
 
-export default app;
+// Routes (registered after middleware and DB connect)
+app.use("/api/auth", authRoutes);
+app.use("/api/posts", postRoutes);
 
-// after auth routes
+export default app;

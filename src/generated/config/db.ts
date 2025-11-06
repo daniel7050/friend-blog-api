@@ -1,6 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import prismaClient from "./prisma";
 
-export const prisma = new PrismaClient();
+// Re-export the single PrismaClient instance from `prisma.ts` to avoid
+// creating multiple clients across the app.
+export const prisma = prismaClient;
 
 export const connectDB = async () => {
   try {
