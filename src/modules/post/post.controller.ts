@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { prisma } from "../../generated/config/db";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
 // 🟢 Create Post
 export const createPost = async (req: Request, res: Response) => {
