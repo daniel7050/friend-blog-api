@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1,
+    "name": "Samuel",
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "$2b$10$hmKIofTRcYD6dGGyoFcFreZB7E/GTU8AHFcPfEm31ljgh.cedcBiq",
+    "createdAt": "2025-08-03T17:10:52.481Z"
+  },
+  {
+    "id": 4,
+    "name": "Kayode",
+    "username": "Kay-baba",
+    "email": "test4@example.com",
+    "password": "$2b$10$yA2afx5/DPUH.zRBit7eaOd/HFTfIoUCTPvidzUN.Cobvf2Zq3wfK",
+    "createdAt": "2025-08-10T21:35:06.413Z"
+  },
+  {
+    "id": 3,
+    "name": "Paul",
+    "username": "test1user",
+    "email": "test1@example.com",
+    "password": "$2b$10$D.DtiOkmRmdlTKQ9TJIpaueD4Cp9sI0VBgiFg3kf672kNSwiEFrx6",
+    "createdAt": "2025-08-03T17:19:52.698Z"
+  },
+  {
+    "id": 8,
+    "name": "Omole Daniel",
+    "username": "DannyT",
+    "email": "danielomole18@gmail.com",
+    "password": "$2b$10$PP/JGfm.IgDmoZae5yWeAe1agGWztC8n82U0zOSOxS7sBZ21FrjDu",
+    "createdAt": "2025-08-25T13:07:52.241Z"
+  }
+]
