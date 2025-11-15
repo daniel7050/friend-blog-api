@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import { AuthRequest } from "../../middlewares/auth.middleware";
+import prisma from "../../generated/config/prisma";
 
 // 🟢 Create Post
 export const createPost = async (req: Request, res: Response) => {
@@ -92,6 +92,96 @@ export const deletePost = async (req: Request, res: Response) => {
     return res.json({ message: "Post deleted successfully" });
   } catch (error) {
     console.error("❌ Delete Post error:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const toggleLike = async (req: AuthRequest, res: Response) => {
+  try {
+    const { postId } = req.params;
+
+    const existingLike = await prisma.like.findFirst({
+      where: { postId, userId: Number(req.user!.id) },
+    });
+
+    if (existingLike) {
+      await prisma.like.delete({ where: { id: existingLike.id } });
+      return res.json({ liked: false });
+    }
+
+    await prisma.like.create({
+      data: { postId, userId: Number(req.user!.id) },
+    });
+
+    return res.json({ liked: true });
+  } catch (error) {
+    console.error("❌ Toggle Like error:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const createComment = async (req: AuthRequest, res: Response) => {
+  try {
+    const { postId } = req.params;
+    const { content } = req.body;
+
+    const comment = await prisma.comment.create({
+      data: {
+        content,
+        postId,
+        authorId: Number(req.user!.id),
+      },
+    });
+
+    return res.status(201).json(comment);
+  } catch (error) {
+    console.error("❌ Create Comment error:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const updateComment = async (req: AuthRequest, res: Response) => {
+  try {
+    const { postId, commentId } = req.params;
+    const { content } = req.body;
+
+    const updated = await prisma.comment.update({
+      where: { id: Number(commentId) },
+      data: { content },
+    });
+
+    return res.json(updated);
+  } catch (error) {
+    console.error("❌ Update Comment error:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const deleteComment = async (req: AuthRequest, res: Response) => {
+  try {
+    const { commentId } = req.params;
+
+    await prisma.comment.delete({ where: { id: Number(commentId) } });
+    return res.json({ message: "Comment deleted" });
+  } catch (error) {
+    console.error("❌ Delete Comment error:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
+export const getComments = async (req: AuthRequest, res: Response) => {
+  try {
+    const { postId } = req.params;
+
+    const comments = await prisma.comment.findMany({
+      where: { postId },
+      include: { author: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return res.json(comments);
+  } catch (error) {
+    console.error("❌ Get Comments error:", error);
     return res.status(500).json({ error: "Server error" });
   }
 };

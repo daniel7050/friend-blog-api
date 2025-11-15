@@ -14,8 +14,10 @@ model User {
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
-  // Relation with Post
+  // Relations
   posts     Post[]
+  comments  Comment[]
+  likes     Like[]
 }
 
 model Post {
@@ -27,4 +29,25 @@ model Post {
   // Relation with User
   author   User @relation(fields: [authorId], references: [id])
   authorId Int
+  comments  Comment[]
+  likes     Like[]
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  content   String
+  post      Post     @relation(fields: [postId], references: [id])
+  postId    String
+  author    User     @relation(fields: [authorId], references: [id])
+  authorId  Int
+  createdAt DateTime @default(now())
+}
+
+model Like {
+  id        Int     @id @default(autoincrement())
+  post      Post    @relation(fields: [postId], references: [id])
+  postId    String
+  user      User    @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime @default(now())
 }
