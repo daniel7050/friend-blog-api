@@ -33,7 +33,16 @@ export const getUserPosts = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Not authorized" });
 
     const posts = await prisma.post.findMany({
-      where: { authorId: userId },
+      where: {
+        authorId: {
+          in: await prisma.userFollow
+            .findMany({
+              where: { followerId: userId },
+              select: { followingId: true },
+            })
+            .then((list) => list.map((l) => l.followingId)),
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
 

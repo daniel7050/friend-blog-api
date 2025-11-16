@@ -88,3 +88,24 @@ export const loginUser = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
+
+export const searchUsers = async (req: Request, res: Response) => {
+  const q = req.query.q as string;
+
+  try {
+    const users = await prisma.user.findMany({
+      where: q ? { username: { contains: q, mode: "insensitive" } } : {},
+      select: {
+        id: true,
+        username: true,
+        name: true,
+      },
+      take: 20,
+    });
+
+    res.json(users);
+  } catch (error) {
+    console.error("Search users error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
