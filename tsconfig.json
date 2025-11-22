@@ -11,6 +11,6 @@
     "resolveJsonModule": true,
     "noImplicitAny": false
   },
-  "include": ["src"],
+  "include": ["src", "middlewares"],
   "exclude": ["node_modules"]
 }
