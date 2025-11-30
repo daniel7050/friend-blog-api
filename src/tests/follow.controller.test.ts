@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { followUser, unfollowUser } from "../modules/follow/follow.controller";
 
 // Mock prisma client used by controllers
+// IMPORTANT: mock the resolved path to the generated client; use the same relative
+// module specifier that controller modules use when importing the generated client.
 vi.mock("../generated/config/prisma", () => ({
   default: {
     userFollow: {
@@ -24,12 +26,10 @@ function mockRes() {
 }
 
 describe("follow.controller", () => {
-  beforeEach(() => {
-    // require the mocked prisma after vi.mock has been hoisted
-    // using require avoids ESM file-extension issues in the test runner
-    // vitest will return the mock provided in vi.mock above
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    prisma = require("../generated/config/prisma").default;
+  beforeEach(async () => {
+    // import the mocked prisma module provided by vi.mock above
+    const mocked = await vi.importMock("../generated/config/prisma");
+    prisma = mocked.default;
     vi.resetAllMocks();
   });
 

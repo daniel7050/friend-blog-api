@@ -4,6 +4,13 @@ import prisma from "../../generated/config/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+// Helper: simple password strength check
+const isStrongPassword = (pw: string) => {
+  // at least 8 chars, one upper, one lower, one digit, one special
+  const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+  return re.test(pw);
+};
+
 // 🔑 Generate JWT
 const generateToken = (id: string, email: string) => {
   return jwt.sign({ id, email }, process.env.JWT_SECRET as string, {
@@ -18,6 +25,14 @@ export const registerUser = async (req: Request, res: Response) => {
   // 1️⃣ Validate inputs
   if (!name || !email || !password || !username) {
     return res.status(400).json({ error: "All fields are required" });
+  }
+
+  // 1.1️⃣ Enforce password strength
+  if (!isStrongPassword(password)) {
+    return res.status(400).json({
+      error:
+        "Password must be at least 8 characters and include uppercase, lowercase, number, and special character",
+    });
   }
 
   try {
@@ -36,6 +51,18 @@ export const registerUser = async (req: Request, res: Response) => {
     });
 
     // 5️⃣ Respond with safe user data + token
+    const token = generateToken(user.id.toString(), user.email);
+
+    // Optionally set token in secure cookie when enabled via env
+    if (process.env.SEND_TOKEN_IN_COOKIE === "true") {
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      });
+    }
+
     return res.status(201).json({
       user: {
         id: user.id,
@@ -43,7 +70,7 @@ export const registerUser = async (req: Request, res: Response) => {
         email: user.email,
         username: user.username,
       },
-      token: generateToken(user.id.toString(), user.email),
+      token,
     });
   } catch (error) {
     console.error("❌ Register error:", error);
@@ -74,6 +101,17 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 
     // 4️⃣ Respond with safe user data + token
+    const token = generateToken(user.id.toString(), user.email);
+
+    if (process.env.SEND_TOKEN_IN_COOKIE === "true") {
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 1000 * 60 * 60 * 24 * 30,
+      });
+    }
+
     return res.status(200).json({
       user: {
         id: user.id,
@@ -81,7 +119,7 @@ export const loginUser = async (req: Request, res: Response) => {
         email: user.email,
         username: user.username,
       },
-      token: generateToken(user.id.toString(), user.email),
+      token,
     });
   } catch (error) {
     console.error("❌ Login error:", error);

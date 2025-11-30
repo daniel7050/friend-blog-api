@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { AuthRequest } from "../../../middlewares/auth.middleware";
+import { AuthRequest } from "../../types/auth.types";
 import prisma from "../../generated/config/prisma";
+import { findComment, isCommentOwner } from "../../utils/ownership";
 
 // 🟢 Create Post
 export const createPost = async (req: Request, res: Response) => {
@@ -32,17 +33,17 @@ export const getUserPosts = async (req: Request, res: Response) => {
     if (!rawUserId || Number.isNaN(userId))
       return res.status(401).json({ error: "Not authorized" });
 
+    const following = await prisma.userFollow.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    });
+
+    const ids = following.length ? following.map((f) => f.followingId) : [];
+    // always include self
+    ids.push(userId);
+
     const posts = await prisma.post.findMany({
-      where: {
-        authorId: {
-          in: await prisma.userFollow
-            .findMany({
-              where: { followerId: userId },
-              select: { followingId: true },
-            })
-            .then((list) => list.map((l) => l.followingId)),
-        },
-      },
+      where: { authorId: { in: ids } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -154,6 +155,24 @@ export const updateComment = async (req: AuthRequest, res: Response) => {
     const { postId, commentId } = req.params;
     const { content } = req.body;
 
+    const rawUserId = (req as any).user?.id;
+    const userId = Number(rawUserId);
+    if (!rawUserId || Number.isNaN(userId))
+      return res.status(401).json({ error: "Not authorized" });
+
+    const comment = await findComment(Number(commentId));
+    if (!comment) return res.status(404).json({ error: "Comment not found" });
+
+    // If a postId param is provided and the comment has a postId, ensure they match
+    if (postId && comment.postId !== undefined && comment.postId !== postId)
+      return res
+        .status(400)
+        .json({ error: "Comment does not belong to the specified post" });
+
+    // Ensure the authenticated user is the author of the comment
+    if (comment.authorId !== userId)
+      return res.status(403).json({ error: "Not authorized" });
+
     const updated = await prisma.comment.update({
       where: { id: Number(commentId) },
       data: { content },
@@ -168,7 +187,24 @@ export const updateComment = async (req: AuthRequest, res: Response) => {
 
 export const deleteComment = async (req: AuthRequest, res: Response) => {
   try {
-    const { commentId } = req.params;
+    const { commentId, postId } = req.params;
+
+    const rawUserId = (req as any).user?.id;
+    const userId = Number(rawUserId);
+    if (!rawUserId || Number.isNaN(userId))
+      return res.status(401).json({ error: "Not authorized" });
+
+    const comment = await findComment(Number(commentId));
+    if (!comment) return res.status(404).json({ error: "Comment not found" });
+
+    // If a postId param is provided and the comment has a postId, ensure they match
+    if (postId && comment.postId !== undefined && comment.postId !== postId)
+      return res
+        .status(400)
+        .json({ error: "Comment does not belong to the specified post" });
+
+    if (comment.authorId !== userId)
+      return res.status(403).json({ error: "Not authorized" });
 
     await prisma.comment.delete({ where: { id: Number(commentId) } });
     return res.json({ message: "Comment deleted" });

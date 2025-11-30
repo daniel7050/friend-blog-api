@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../generated/config/prisma";
-import { AuthRequest } from "../../../middlewares/auth.middleware";
+import { AuthRequest } from "../../types/auth.types";
 
 // 🟢 Follow a user
 export const followUser = async (req: AuthRequest, res: Response) => {
