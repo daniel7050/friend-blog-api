@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getUserPosts } from "../modules/post/post.controller";
 
-// Mock generated prisma client as used by controllers (path from this test file)
 vi.mock("../generated/config/prisma", () => ({
   default: {
     userFollow: { findMany: vi.fn() },
-    post: { findMany: vi.fn() },
+    post: { findMany: vi.fn(), findUnique: vi.fn() },
   },
 }));
 
@@ -41,13 +40,30 @@ describe("post feed", () => {
       select: { followingId: true },
     });
 
-    expect(prisma.post.findMany).toHaveBeenCalledWith({
-      where: { authorId: { in: [5] } },
-      orderBy: { createdAt: "desc" },
-    });
+    expect(prisma.post.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { authorId: { in: [5] } },
+      })
+    );
 
-    expect(res.json).toHaveBeenCalledWith([
-      { id: "p1", authorId: 5, content: "mine" },
-    ]);
+    expect(res.json).toHaveBeenCalledWith({
+      items: [{ id: "p1", authorId: 5, content: "mine" }],
+      nextCursor: null,
+      hasNext: false,
+    });
+  });
+
+  it("returns 400 when cursor is invalid", async () => {
+    const req: any = { user: { id: 5 }, params: {}, query: { cursor: "bad" } };
+    const res = mockRes();
+
+    prisma.userFollow.findMany.mockResolvedValue([]);
+    // cursor validation call
+    prisma.post.findUnique.mockResolvedValue(null);
+
+    await getUserPosts(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "Invalid cursor" });
   });
 });

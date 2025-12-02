@@ -14,6 +14,7 @@ export const ENV = {
       : true,
 };
 
-if (!ENV.DATABASE_URL || !ENV.JWT_SECRET) {
+// During tests we allow missing env vars (tests may set them per-file).
+if (process.env.NODE_ENV !== "test" && (!ENV.DATABASE_URL || !ENV.JWT_SECRET)) {
   throw new Error("Missing required environment variables");
 }

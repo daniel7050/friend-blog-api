@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { updateComment, deleteComment } from "../modules/post/post.controller";
 
+// Module-scoped mock functions stored on globalThis to avoid vi.mock hoisting TDZ
 // Mock the generated prisma client using the path from the test file
 vi.mock("../generated/config/prisma", () => ({
   default: {

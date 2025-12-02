@@ -1,5 +1,6 @@
 import { Server as HTTPServer } from "http";
 import { Server as IOServer } from "socket.io";
+import { verifyToken } from "../../utils/auth";
 
 let io: IOServer | null = null;
 
@@ -11,8 +12,27 @@ export const initSocket = (server: HTTPServer) => {
   });
 
   io.on("connection", (socket) => {
-    // If client provides a userId query param, join a room for that user
-    const userId = socket.handshake.query.userId as string | undefined;
+    // Prefer JWT token sent via `auth` (socket handshake)
+    const token = (socket.handshake.auth &&
+      (socket.handshake.auth as any).token) as string | undefined;
+    let userId: string | undefined;
+
+    if (token) {
+      try {
+        const payload: any = verifyToken(token);
+        userId = String(
+          payload?.id ?? payload?.userId ?? payload?.sub ?? undefined
+        );
+      } catch (e) {
+        // invalid token; ignore
+      }
+    }
+
+    // Fallback: allow legacy query param userId
+    if (!userId) {
+      userId = socket.handshake.query.userId as string | undefined;
+    }
+
     if (userId) {
       socket.join(`user:${userId}`);
     }
