@@ -57,7 +57,7 @@ describe("socket emits on like/comment", () => {
     mockPostFindUnique.mockResolvedValue({ id: "p1", authorId: 1 });
     mockNotificationCreate.mockResolvedValue({ id: 100, userId: 1 });
 
-    const { toggleLike } = await import("../modules/post/post.controller");
+    const { toggleLike } = await import("../modules/post/post.controller.ts");
 
     await toggleLike(req, res);
 
@@ -92,7 +92,9 @@ describe("socket emits on like/comment", () => {
     mockPostFindUnique.mockResolvedValue({ id: "p1", authorId: 1 });
     mockNotificationCreate.mockResolvedValue({ id: 101, userId: 1 });
 
-    const { createComment } = await import("../modules/post/post.controller");
+    const { createComment } = await import(
+      "../modules/post/post.controller.ts"
+    );
 
     await createComment(req, res);
 
