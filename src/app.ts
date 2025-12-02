@@ -6,6 +6,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import postRoutes from "./modules/post/post.routes";
 import followRoutes from "./modules/follow/follow.routes";
 import userRoutes from "./modules/users/user.routes";
+import notificationRoutes from "./modules/notification/notification.routes";
 import { ENV } from "./generated/config/env";
 
 const app = express();
@@ -37,6 +38,7 @@ app.get("/api/features", (_req, res) => {
   res.json({ raptorMini: ENV.RAPTOR_MINI_ENABLED });
 });
 app.use("/api/users", userRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Error handler (must be registered after all routes)
 import errorHandler from "../middlewares/error.middleware";

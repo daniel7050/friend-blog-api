@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthRequest } from "../../types/auth.types";
 import prisma from "../../generated/config/prisma";
 import { findComment, isCommentOwner } from "../../utils/ownership";
+import { safeEmit } from "../../generated/config/socket";
 
 // 🟢 Create Post
 export const createPost = async (req: Request, res: Response) => {
@@ -123,6 +124,24 @@ export const toggleLike = async (req: AuthRequest, res: Response) => {
       data: { postId, userId: Number(req.user!.id) },
     });
 
+    try {
+      // create a notification for the post author
+      const post = await prisma.post.findUnique({ where: { id: postId } });
+      if (post && post.authorId !== Number(req.user!.id)) {
+        const notification = await prisma.notification.create({
+          data: {
+            userId: post.authorId,
+            actorId: Number(req.user!.id),
+            type: "like",
+            data: { postId },
+          },
+        });
+        safeEmit(`user:${post.authorId}`, "notification", notification);
+      }
+    } catch (e) {
+      console.error("Failed to create/emit notification", e);
+    }
+
     return res.json({ liked: true });
   } catch (error) {
     console.error("❌ Toggle Like error:", error);
@@ -142,6 +161,24 @@ export const createComment = async (req: AuthRequest, res: Response) => {
         authorId: Number(req.user!.id),
       },
     });
+
+    try {
+      // create a notification for the post author
+      const post = await prisma.post.findUnique({ where: { id: postId } });
+      if (post && post.authorId !== Number(req.user!.id)) {
+        const notification = await prisma.notification.create({
+          data: {
+            userId: post.authorId,
+            actorId: Number(req.user!.id),
+            type: "comment",
+            data: { postId, commentId: comment.id },
+          },
+        });
+        safeEmit(`user:${post.authorId}`, "notification", notification);
+      }
+    } catch (e) {
+      console.error("Failed to create/emit notification", e);
+    }
 
     return res.status(201).json(comment);
   } catch (error) {

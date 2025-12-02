@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { ENV } from "../generated/config/env";
+import { ENV } from "../src/generated/config/env";
 import { AuthRequest } from "../src/types/auth.types";
 
 export const protect = (
