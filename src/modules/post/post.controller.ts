@@ -43,12 +43,50 @@ export const getUserPosts = async (req: Request, res: Response) => {
     // always include self
     ids.push(userId);
 
-    const posts = await prisma.post.findMany({
-      where: { authorId: { in: ids } },
-      orderBy: { createdAt: "desc" },
-    });
+    // Cursor-based pagination
+    const limitRaw = (req.query && (req.query as any).limit) as
+      | string
+      | undefined;
+    const cursorRaw = (req.query && (req.query as any).cursor) as
+      | string
+      | undefined;
+    const limit = limitRaw ? Math.min(Number(limitRaw), 50) : 10;
+    const cursor = cursorRaw || undefined;
 
-    return res.json(posts);
+    const findArgs: any = {
+      where: { authorId: { in: ids } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+    };
+
+    if (cursor) {
+      findArgs.cursor = { id: cursor };
+      findArgs.skip = 1;
+    }
+
+    // If a cursor is provided, validate it points to an existing post
+    if (cursor) {
+      const cursorExists = await prisma.post.findUnique({
+        where: { id: cursor },
+      });
+      if (!cursorExists) {
+        return res.status(400).json({ error: "Invalid cursor" });
+      }
+    }
+
+    const results = await prisma.post.findMany(findArgs);
+
+    let nextCursor: string | null = null;
+    let items = results;
+    let hasNext = false;
+    if (results.length > limit) {
+      const next = results[results.length - 1];
+      nextCursor = next.id;
+      items = results.slice(0, -1);
+      hasNext = true;
+    }
+
+    return res.json({ items, nextCursor, hasNext });
   } catch (error) {
     console.error("❌ Fetch Posts error:", error);
     return res.status(500).json({ error: "Server error" });
@@ -136,7 +174,13 @@ export const toggleLike = async (req: AuthRequest, res: Response) => {
             data: { postId },
           },
         });
+        console.log("DEBUG: toggleLike created notification", { notification });
         safeEmit(`user:${post.authorId}`, "notification", notification);
+        console.log("DEBUG: toggleLike safeEmit called");
+      } else {
+        console.log(
+          "DEBUG: toggleLike not creating notification (self-like or missing post)"
+        );
       }
     } catch (e) {
       console.error("Failed to create/emit notification", e);
@@ -174,7 +218,15 @@ export const createComment = async (req: AuthRequest, res: Response) => {
             data: { postId, commentId: comment.id },
           },
         });
+        console.log("DEBUG: createComment created notification", {
+          notification,
+        });
         safeEmit(`user:${post.authorId}`, "notification", notification);
+        console.log("DEBUG: createComment safeEmit called");
+      } else {
+        console.log(
+          "DEBUG: createComment not creating notification (self-comment or missing post)"
+        );
       }
     } catch (e) {
       console.error("Failed to create/emit notification", e);
