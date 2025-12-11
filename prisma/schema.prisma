@@ -31,7 +31,7 @@ model Post {
   updatedAt DateTime @updatedAt
 
   // Relation with User
-  author   User @relation(fields: [authorId], references: [id])
+    author   User @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId Int
   comments  Comment[]
   likes     Like[]
@@ -42,7 +42,7 @@ model Comment {
   content   String
   post      Post     @relation(fields: [postId], references: [id])
   postId    String
-  author    User     @relation(fields: [authorId], references: [id])
+    author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
   authorId  Int
   createdAt DateTime @default(now())
 }
@@ -51,7 +51,7 @@ model Like {
   id        Int     @id @default(autoincrement())
   post      Post    @relation(fields: [postId], references: [id])
   postId    String
-  user      User    @relation(fields: [userId], references: [id])
+    user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    Int
   createdAt DateTime @default(now())
 }
@@ -69,9 +69,9 @@ model UserFollow {
 
 model Notification {
   id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    Int
-  actor     User?    @relation("NotificationActor", fields: [actorId], references: [id])
+    actor     User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
   actorId   Int?
   type      String
   data      Json?
