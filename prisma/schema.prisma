@@ -22,11 +22,16 @@ model User {
   actedNotifications Notification[] @relation("NotificationActor")
   followers  UserFollow[] @relation("UserFollowing")
   following  UserFollow[] @relation("UserFollows")
+  followRequestsSent     UserFollowRequest[] @relation("FollowRequestRequester")
+  followRequestsReceived UserFollowRequest[] @relation("FollowRequestTarget")
 }
 
 model Post {
   id        String   @id @default(uuid())
   content   String
+  imageUrl  String?
+  imagePublicId String?
+  visibility PostVisibility @default(friends)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -35,6 +40,11 @@ model Post {
   authorId Int
   comments  Comment[]
   likes     Like[]
+}
+
+enum PostVisibility {
+  friends
+  public
 }
 
 model Comment {
@@ -65,6 +75,26 @@ model UserFollow {
   createdAt   DateTime @default(now())
 
   @@unique([followerId, followingId])
+}
+
+model UserFollowRequest {
+  id          String   @id @default(uuid())
+  requesterId Int
+  targetId    Int
+  status      FollowRequestStatus @default(pending)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requester User @relation("FollowRequestRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  target    User @relation("FollowRequestTarget", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, targetId])
+}
+
+enum FollowRequestStatus {
+  pending
+  accepted
+  rejected
 }
 
 model Notification {

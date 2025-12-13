@@ -17,4 +17,13 @@ export const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-export default { authLimiter, loginLimiter };
+// Upload limiter - protect Cloudinary and storage costs
+export const uploadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 20, // limit each IP to 20 uploads per window
+  message: { error: "Too many uploads, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export default { authLimiter, loginLimiter, uploadLimiter };

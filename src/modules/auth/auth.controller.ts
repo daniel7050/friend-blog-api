@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import prisma from "../../generated/config/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { ENV } from "../../generated/config/env";
 
 // Helper: simple password strength check
 const isStrongPassword = (pw: string) => {
@@ -13,7 +14,7 @@ const isStrongPassword = (pw: string) => {
 
 // 🔑 Generate JWT
 const generateToken = (id: string, email: string) => {
-  return jwt.sign({ id, email }, process.env.JWT_SECRET as string, {
+  return jwt.sign({ id, email }, ENV.JWT_SECRET as string, {
     expiresIn: "30d", // adjust as needed
   });
 };

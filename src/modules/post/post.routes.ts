@@ -3,6 +3,7 @@ import { protect } from "../../../middlewares/auth.middleware";
 import {
   createPost,
   getUserPosts,
+  getPostById,
   updatePost,
   deletePost,
   toggleLike,
@@ -16,6 +17,7 @@ const router = express.Router();
 
 router.post("/", protect, createPost); // Create post
 router.get("/", protect, getUserPosts); // Get posts
+router.get("/:id", protect, getPostById); // Get single post
 router.put("/:id", protect, updatePost); // Update post
 router.delete("/:id", protect, deletePost); // Delete post
 router.post("/:postId/like", protect, toggleLike);

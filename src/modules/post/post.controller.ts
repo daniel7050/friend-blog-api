@@ -7,7 +7,7 @@ import { safeEmit } from "../../generated/config/socket";
 // 🟢 Create Post
 export const createPost = async (req: Request, res: Response) => {
   try {
-    const { content } = req.body;
+    const { content, imageUrl, imagePublicId, visibility } = req.body;
     const rawUserId = (req as any).user?.id; // from auth middleware
     const userId = Number(rawUserId);
     if (!rawUserId || Number.isNaN(userId))
@@ -16,8 +16,41 @@ export const createPost = async (req: Request, res: Response) => {
     if (!content) return res.status(400).json({ error: "Content is required" });
 
     const post = await prisma.post.create({
-      data: { content, authorId: userId },
+      data: {
+        content,
+        authorId: userId,
+        imageUrl: imageUrl || undefined,
+        imagePublicId: imagePublicId || undefined,
+        visibility: visibility === "public" ? "public" : "friends",
+      },
     });
+
+    // Emit new_post notifications to followers
+    try {
+      const followers = await prisma.userFollow.findMany({
+        where: { followingId: userId },
+        select: { followerId: true },
+      });
+
+      const recipientIds = followers.map((f) => f.followerId);
+      if (recipientIds.length) {
+        await Promise.all(
+          recipientIds.map(async (rid) => {
+            const notification = await prisma.notification.create({
+              data: {
+                userId: rid,
+                actorId: userId,
+                type: "new_post",
+                data: { postId: post.id },
+              },
+            });
+            safeEmit(`user:${rid}`, "notification", notification);
+          })
+        );
+      }
+    } catch (e) {
+      console.error("Failed to emit new_post notifications", e);
+    }
 
     return res.status(201).json(post);
   } catch (error) {
@@ -93,6 +126,40 @@ export const getUserPosts = async (req: Request, res: Response) => {
   }
 };
 
+// 🔍 Get Single Post by ID with visibility enforcement
+export const getPostById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const rawUserId = (req as any).user?.id;
+    const userId = Number(rawUserId);
+    if (!rawUserId || Number.isNaN(userId))
+      return res.status(401).json({ error: "Not authorized" });
+
+    const post = await prisma.post.findUnique({
+      where: { id },
+      include: { author: { select: { id: true, username: true, name: true } } },
+    });
+    if (!post) return res.status(404).json({ error: "Post not found" });
+
+    if (post.visibility === "friends" && post.authorId !== userId) {
+      const follows = await prisma.userFollow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: userId,
+            followingId: post.authorId,
+          },
+        },
+      });
+      if (!follows) return res.status(403).json({ error: "Not authorized" });
+    }
+
+    return res.json(post);
+  } catch (error) {
+    console.error("❌ Get Post error:", error);
+    return res.status(500).json({ error: "Server error" });
+  }
+};
+
 // 🟡 Update Post
 export const updatePost = async (req: Request, res: Response) => {
   try {
@@ -138,6 +205,16 @@ export const deletePost = async (req: Request, res: Response) => {
 
     await prisma.post.delete({ where: { id } });
 
+    // If the post had an image, attempt to delete it from Cloudinary
+    try {
+      if ((post as any).imagePublicId) {
+        const { v2: cloudinary } = await import("cloudinary");
+        await cloudinary.uploader.destroy((post as any).imagePublicId);
+      }
+    } catch (e) {
+      console.error("Failed to delete Cloudinary image for post", e);
+    }
+
     return res.json({ message: "Post deleted successfully" });
   } catch (error) {
     console.error("❌ Delete Post error:", error);
@@ -148,6 +225,27 @@ export const deletePost = async (req: Request, res: Response) => {
 export const toggleLike = async (req: AuthRequest, res: Response) => {
   try {
     const { postId } = req.params;
+
+    // Enforce friends-only access: only followers of the post author or self can like
+    const postCheck = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { authorId: true, visibility: true },
+    });
+    if (!postCheck) return res.status(404).json({ error: "Post not found" });
+    if (
+      postCheck.visibility === "friends" &&
+      postCheck.authorId !== Number(req.user!.id)
+    ) {
+      const follows = await prisma.userFollow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: Number(req.user!.id),
+            followingId: postCheck.authorId,
+          },
+        },
+      });
+      if (!follows) return res.status(403).json({ error: "Not authorized" });
+    }
 
     const existingLike = await prisma.like.findFirst({
       where: { postId, userId: Number(req.user!.id) },
@@ -197,6 +295,27 @@ export const createComment = async (req: AuthRequest, res: Response) => {
   try {
     const { postId } = req.params;
     const { content } = req.body;
+
+    // Enforce friends-only access: only followers of the post author or self can comment
+    const postCheck = await prisma.post.findUnique({
+      where: { id: postId },
+      select: { authorId: true, visibility: true },
+    });
+    if (!postCheck) return res.status(404).json({ error: "Post not found" });
+    if (
+      postCheck.visibility === "friends" &&
+      postCheck.authorId !== Number(req.user!.id)
+    ) {
+      const follows = await prisma.userFollow.findUnique({
+        where: {
+          followerId_followingId: {
+            followerId: Number(req.user!.id),
+            followingId: postCheck.authorId,
+          },
+        },
+      });
+      if (!follows) return res.status(403).json({ error: "Not authorized" });
+    }
 
     const comment = await prisma.comment.create({
       data: {

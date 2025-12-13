@@ -7,6 +7,7 @@ import postRoutes from "./modules/post/post.routes";
 import followRoutes from "./modules/follow/follow.routes";
 import userRoutes from "./modules/users/user.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
+import uploadRoutes from "./modules/upload/upload.routes.ts";
 import { ENV } from "./generated/config/env";
 
 const app = express();
@@ -39,6 +40,7 @@ app.get("/api/features", (_req, res) => {
 });
 app.use("/api/users", userRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/uploads", uploadRoutes);
 
 // Error handler (must be registered after all routes)
 import errorHandler from "../middlewares/error.middleware";

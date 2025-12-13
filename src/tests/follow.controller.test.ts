@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { followUser, unfollowUser } from "../modules/follow/follow.controller";
+import {
+  requestFollow,
+  unfollowUser,
+  acceptFollowRequest,
+  rejectFollowRequest,
+} from "../modules/follow/follow.controller";
 
 // Mock prisma client used by controllers
 // IMPORTANT: mock the resolved path to the generated client; use the same relative
@@ -12,6 +17,12 @@ vi.mock("../generated/config/prisma", () => ({
       deleteMany: vi.fn(),
       findMany: vi.fn(),
     },
+    userFollowRequest: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -33,24 +44,26 @@ describe("follow.controller", () => {
     vi.resetAllMocks();
   });
 
-  it("creates a follow when not existing", async () => {
+  it("creates a follow request when not existing", async () => {
     const req: any = { user: { id: 1 }, params: { id: "2" } };
     const res = mockRes();
 
     prisma.userFollow.findUnique.mockResolvedValue(null);
+    prisma.userFollowRequest.findUnique.mockResolvedValue(null);
     prisma.userFollow.create.mockResolvedValue({
       id: "uuid",
       followerId: 1,
       followingId: 2,
     });
 
-    await followUser(req, res);
+    await requestFollow(req, res);
 
     expect(prisma.userFollow.findUnique).toHaveBeenCalled();
-    expect(prisma.userFollow.create).toHaveBeenCalledWith({
-      data: { followerId: 1, followingId: 2 },
+    expect(prisma.userFollowRequest.findUnique).toHaveBeenCalled();
+    expect(prisma.userFollowRequest.create).toHaveBeenCalledWith({
+      data: { requesterId: 1, targetId: 2, status: "pending" },
     });
-    expect(res.json).toHaveBeenCalledWith({ message: "Followed successfully" });
+    expect(res.json).toHaveBeenCalledWith({ message: "Follow request sent" });
   });
 
   it("returns 400 when already following", async () => {
@@ -63,12 +76,52 @@ describe("follow.controller", () => {
       followingId: 2,
     });
 
-    await followUser(req, res);
+    await requestFollow(req, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
-      message: "Already following this user",
+      message: "Already following",
     });
+  });
+
+  it("accepts a pending follow request", async () => {
+    const req: any = { user: { id: 2 }, params: { requestId: "req1" } };
+    const res = mockRes();
+
+    prisma.userFollowRequest.findUnique.mockResolvedValue({
+      id: "req1",
+      requesterId: 1,
+      targetId: 2,
+      status: "pending",
+    });
+    prisma.userFollowRequest.update.mockResolvedValue({});
+    prisma.userFollow.create.mockResolvedValue({ id: "f1" });
+
+    prisma.$transaction = vi.fn(async (ops) => {
+      for (const op of ops) await op;
+      return true;
+    });
+
+    await acceptFollowRequest(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({ message: "Request accepted" });
+  });
+
+  it("rejects a pending follow request", async () => {
+    const req: any = { user: { id: 2 }, params: { requestId: "req1" } };
+    const res = mockRes();
+
+    prisma.userFollowRequest.findUnique.mockResolvedValue({
+      id: "req1",
+      requesterId: 1,
+      targetId: 2,
+      status: "pending",
+    });
+    prisma.userFollowRequest.update.mockResolvedValue({});
+
+    await rejectFollowRequest(req, res);
+
+    expect(res.json).toHaveBeenCalledWith({ message: "Request rejected" });
   });
 
   it("unfollows a user", async () => {
@@ -91,7 +144,7 @@ describe("follow.controller", () => {
     const req: any = { user: undefined, params: { id: "2" } };
     const res = mockRes();
 
-    await followUser(req, res);
+    await requestFollow(req, res);
 
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({ message: "Unauthorized" });
