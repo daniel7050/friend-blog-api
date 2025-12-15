@@ -225,6 +225,7 @@ export const deletePost = async (req: Request, res: Response) => {
 export const toggleLike = async (req: AuthRequest, res: Response) => {
   try {
     const { postId } = req.params;
+    const userId = Number(req.user!.id);
 
     // Enforce friends-only access: only followers of the post author or self can like
     const postCheck = await prisma.post.findUnique({
@@ -232,6 +233,7 @@ export const toggleLike = async (req: AuthRequest, res: Response) => {
       select: { authorId: true, visibility: true },
     });
     if (!postCheck) return res.status(404).json({ error: "Post not found" });
+    if (postCheck.authorId === userId) return res.status(400).json({ error: "Cannot like your own post" });
     if (
       postCheck.visibility === "friends" &&
       postCheck.authorId !== Number(req.user!.id)
@@ -295,6 +297,7 @@ export const createComment = async (req: AuthRequest, res: Response) => {
   try {
     const { postId } = req.params;
     const { content } = req.body;
+    const userId = Number(req.user!.id);
 
     // Enforce friends-only access: only followers of the post author or self can comment
     const postCheck = await prisma.post.findUnique({
@@ -302,6 +305,7 @@ export const createComment = async (req: AuthRequest, res: Response) => {
       select: { authorId: true, visibility: true },
     });
     if (!postCheck) return res.status(404).json({ error: "Post not found" });
+    if (postCheck.authorId === userId) return res.status(400).json({ error: "Cannot comment on your own post" });
     if (
       postCheck.visibility === "friends" &&
       postCheck.authorId !== Number(req.user!.id)
