@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../generated/config/prisma";
 import { AuthRequest } from "../../types/auth.types";
+import { safeEmit } from "../../generated/config/socket";
 
 // 🟢 Request to follow a user
 export const requestFollow = async (req: AuthRequest, res: Response) => {
@@ -38,9 +39,24 @@ export const requestFollow = async (req: AuthRequest, res: Response) => {
     if (existingReq)
       return res.status(400).json({ message: "Request already sent" });
 
-    await prisma.userFollowRequest.create({
+    const followRequest = await prisma.userFollowRequest.create({
       data: { requesterId, targetId, status: "pending" },
     });
+
+    // Create and emit notification to target user
+    try {
+      const notification = await prisma.notification.create({
+        data: {
+          userId: targetId,
+          actorId: requesterId,
+          type: "follow_request",
+          data: { requestId: followRequest.id },
+        },
+      });
+      safeEmit(`user:${targetId}`, "notification", notification);
+    } catch (e) {
+      console.error("Failed to create/emit follow request notification", e);
+    }
 
     res.json({ message: "Follow request sent" });
   } catch (error) {
@@ -100,6 +116,21 @@ export const acceptFollowRequest = async (req: AuthRequest, res: Response) => {
       data: { followerId: request.requesterId, followingId: request.targetId },
     }),
   ]);
+
+  // Create and emit notification to requester
+  try {
+    const notification = await prisma.notification.create({
+      data: {
+        userId: request.requesterId,
+        actorId: userId,
+        type: "follow_accepted",
+        data: { requestId },
+      },
+    });
+    safeEmit(`user:${request.requesterId}`, "notification", notification);
+  } catch (e) {
+    console.error("Failed to create/emit follow accepted notification", e);
+  }
 
   res.json({ message: "Request accepted" });
 };
@@ -175,6 +206,35 @@ export const getFollowing = async (req: Request, res: Response) => {
     res.json(following.map((f) => f.following));
   } catch (error) {
     console.error("Get following error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// 📬 Get pending follow requests for authenticated user
+export const getPendingFollowRequests = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  const userId = parseInt(String(req.user?.id), 10);
+
+  if (!userId || isNaN(userId)) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const requests = await prisma.userFollowRequest.findMany({
+      where: { targetId: userId, status: "pending" },
+      include: {
+        requester: {
+          select: { id: true, username: true, name: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json(requests);
+  } catch (error) {
+    console.error("Get pending requests error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

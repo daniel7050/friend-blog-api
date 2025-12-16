@@ -7,6 +7,7 @@ import {
   getFollowing,
   acceptFollowRequest,
   rejectFollowRequest,
+  getPendingFollowRequests,
 } from "./follow.controller";
 
 const router = express.Router();
@@ -14,6 +15,7 @@ const router = express.Router();
 router.post("/:id", protect, requestFollow); // send follow request
 router.delete("/:id", protect, unfollowUser); // unfollow user
 
+router.get("/requests/pending", protect, getPendingFollowRequests); // get pending requests
 router.post("/requests/:requestId/accept", protect, acceptFollowRequest);
 router.post("/requests/:requestId/reject", protect, rejectFollowRequest);
 

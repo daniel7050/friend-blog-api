@@ -21,13 +21,22 @@ vi.mock("../generated/config/prisma", () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      findMany: vi.fn(),
+    },
+    notification: {
+      create: vi.fn(),
     },
     $transaction: vi.fn(),
   },
 }));
 
+vi.mock("../generated/config/socket", () => ({
+  safeEmit: vi.fn(),
+}));
+
 // import the mocked prisma (will be imported in beforeEach)
 let prisma: any;
+let safeEmit: any;
 
 function mockRes() {
   const res: any = {};
@@ -41,6 +50,8 @@ describe("follow.controller", () => {
     // import the mocked prisma module provided by vi.mock above
     const mocked = await vi.importMock("../generated/config/prisma");
     prisma = mocked.default;
+    const socketMock = await vi.importMock("../generated/config/socket");
+    safeEmit = socketMock.safeEmit;
     vi.resetAllMocks();
   });
 
@@ -50,11 +61,13 @@ describe("follow.controller", () => {
 
     prisma.userFollow.findUnique.mockResolvedValue(null);
     prisma.userFollowRequest.findUnique.mockResolvedValue(null);
-    prisma.userFollow.create.mockResolvedValue({
-      id: "uuid",
-      followerId: 1,
-      followingId: 2,
+    prisma.userFollowRequest.create.mockResolvedValue({
+      id: "req-uuid",
+      requesterId: 1,
+      targetId: 2,
+      status: "pending",
     });
+    prisma.notification.create.mockResolvedValue({ id: 100, userId: 2 });
 
     await requestFollow(req, res);
 
@@ -62,6 +75,18 @@ describe("follow.controller", () => {
     expect(prisma.userFollowRequest.findUnique).toHaveBeenCalled();
     expect(prisma.userFollowRequest.create).toHaveBeenCalledWith({
       data: { requesterId: 1, targetId: 2, status: "pending" },
+    });
+    expect(prisma.notification.create).toHaveBeenCalledWith({
+      data: {
+        userId: 2,
+        actorId: 1,
+        type: "follow_request",
+        data: { requestId: "req-uuid" },
+      },
+    });
+    expect(safeEmit).toHaveBeenCalledWith("user:2", "notification", {
+      id: 100,
+      userId: 2,
     });
     expect(res.json).toHaveBeenCalledWith({ message: "Follow request sent" });
   });
@@ -84,7 +109,7 @@ describe("follow.controller", () => {
     });
   });
 
-  it("accepts a pending follow request", async () => {
+  it("accepts a pending follow request and emits notification", async () => {
     const req: any = { user: { id: 2 }, params: { requestId: "req1" } };
     const res = mockRes();
 
@@ -96,6 +121,7 @@ describe("follow.controller", () => {
     });
     prisma.userFollowRequest.update.mockResolvedValue({});
     prisma.userFollow.create.mockResolvedValue({ id: "f1" });
+    prisma.notification.create.mockResolvedValue({ id: 101, userId: 1 });
 
     prisma.$transaction = vi.fn(async (ops) => {
       for (const op of ops) await op;
@@ -104,6 +130,18 @@ describe("follow.controller", () => {
 
     await acceptFollowRequest(req, res);
 
+    expect(prisma.notification.create).toHaveBeenCalledWith({
+      data: {
+        userId: 1,
+        actorId: 2,
+        type: "follow_accepted",
+        data: { requestId: "req1" },
+      },
+    });
+    expect(safeEmit).toHaveBeenCalledWith("user:1", "notification", {
+      id: 101,
+      userId: 1,
+    });
     expect(res.json).toHaveBeenCalledWith({ message: "Request accepted" });
   });
 
