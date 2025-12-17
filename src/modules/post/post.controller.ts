@@ -90,6 +90,7 @@ export const getUserPosts = async (req: Request, res: Response) => {
       where: { authorId: { in: ids } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
+      include: { author: { select: { id: true, username: true, name: true } } },
     };
 
     if (cursor) {
