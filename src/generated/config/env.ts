@@ -7,6 +7,7 @@ export const ENV = {
   PORT: process.env.PORT || "5000",
   DATABASE_URL: process.env.DATABASE_URL || "",
   JWT_SECRET: process.env.JWT_SECRET || "",
+  FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN || "http://localhost:3000",
   CLOUDINARY_URL: process.env.CLOUDINARY_URL || "",
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",

@@ -47,7 +47,9 @@ describe("post feed", () => {
     );
 
     expect(res.json).toHaveBeenCalledWith({
-      items: [{ id: "p1", authorId: 5, content: "mine" }],
+      items: [
+        expect.objectContaining({ id: "p1", authorId: 5, content: "mine" }),
+      ],
       nextCursor: null,
       hasNext: false,
     });

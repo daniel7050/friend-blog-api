@@ -13,7 +13,7 @@ import { ENV } from "./generated/config/env";
 const app = express();
 
 // Middleware (must be registered before routes)
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+app.use(cors({ origin: ENV.FRONTEND_ORIGIN, credentials: true }));
 app.use(express.json());
 // parse cookies (needed when using cookie-based tokens)
 app.use(cookieParser());

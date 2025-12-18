@@ -39,10 +39,15 @@ describe("notification.controller", () => {
 
     await listNotifications(req, res);
 
-    expect(prisma.notification.findMany).toHaveBeenCalledWith({
-      where: { userId: 1 },
-      orderBy: { createdAt: "desc" },
-    });
+    expect(prisma.notification.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 1 },
+        orderBy: { createdAt: "desc" },
+        include: {
+          actor: { select: { id: true, username: true, name: true } },
+        },
+      })
+    );
     expect(res.json).toHaveBeenCalledWith({
       notifications: [{ id: 1, userId: 1 }],
     });
