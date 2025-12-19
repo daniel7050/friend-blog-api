@@ -53,7 +53,11 @@ export const requestFollow = async (req: AuthRequest, res: Response) => {
           data: { requestId: followRequest.id },
         },
       });
+      console.log("DEBUG: requestFollow created notification", {
+        notification,
+      });
       safeEmit(`user:${targetId}`, "notification", notification);
+      console.log("DEBUG: requestFollow safeEmit called");
     } catch (e) {
       console.error("Failed to create/emit follow request notification", e);
     }
