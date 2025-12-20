@@ -90,7 +90,10 @@ export const getUserPosts = async (req: Request, res: Response) => {
       where: { authorId: { in: ids } },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
-      include: { author: { select: { id: true, username: true, name: true } } },
+      include: {
+        author: { select: { id: true, username: true, name: true } },
+        _count: { select: { likes: true } },
+      },
     };
 
     if (cursor) {
@@ -138,7 +141,10 @@ export const getPostById = async (req: Request, res: Response) => {
 
     const post = await prisma.post.findUnique({
       where: { id },
-      include: { author: { select: { id: true, username: true, name: true } } },
+      include: {
+        author: { select: { id: true, username: true, name: true } },
+        _count: { select: { likes: true } },
+      },
     });
     if (!post) return res.status(404).json({ error: "Post not found" });
 
